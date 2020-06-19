@@ -1,9 +1,17 @@
 {
-    "files.exclude": {
-        "**/.classpath": true,
-        "**/.project": true,
-        "**/.settings": true,
-        "**/.factorypath": true
-    },
-    "java.codeGeneration.generateComments": true
+  "files.exclude": {
+    "**/.classpath": true,
+    "**/.project": true,
+    "**/.settings": true,
+    "**/.factorypath": true
+  },
+  "java.codeGeneration.generateComments": true,
+  "spellright.language": ["en"],
+  "spellright.documentTypes": ["markdown", "latex", "plaintext"],
+  "debug.javascript.usePreview": true,
+"debug.javascript.terminalOptions": {},
+"cSpell.words": [
+  "HOTP",
+  "totp"
+]
 }

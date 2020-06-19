@@ -1,3 +1,3 @@
 ## TOTP password
 
-Generate
+Generate a 10 digits TOTP password using "SHA512"

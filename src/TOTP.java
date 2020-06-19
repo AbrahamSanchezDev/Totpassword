@@ -2,12 +2,10 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.security.GeneralSecurityException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Base64;
 import java.util.Date;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
-import java.net.URL;
 import java.util.TimeZone;
 
 /**
@@ -15,6 +13,8 @@ import java.util.TimeZone;
  * www.openauthentication.org for more information.
  *
  * @author Johan Rydell, PortWise, Inc.
+ * 
+ *         Modified by Abraham Sanchez to generate up to 10 digits
  */
 
 public class TOTP {
@@ -22,17 +22,159 @@ public class TOTP {
     private TOTP() {
     }
 
+    // #region Variables
+    static String email = "abraham_gto@hotmail.com:";
+    static String key = "abraham_gto@hotmail.comHENNGECHALLENGE003";
+    static long T0 = 0;
+    static long X = 30;
+    private static final long[] DIGITS_POWER
+    // 0 1 2 3 4 5 6 7 8 9 10
+            = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000L };
+
+    // #endregion
+    public static void main(String[] args) {
+        GetKey(key, 10);
+
+        // TestOriginals();
+    }
+
+    // #region TOTP
+    // Returns a key with the given keytext with the length of digits
+    public static String GetKey(String keyText, int digits) {
+        Date now = new Date();
+        long nowInSeconds = now.getTime() / 1000;
+        String code = Create(keyText, nowInSeconds, digits);
+        System.out.println("Code : " + code);
+        return code;
+    }
+
+    // #region Originals Test
+    static String originalKey = "12345678901234567890";
+    static long originalTestTime[] = { 59L, 1111111109L, 1111111111L, 1234567890L, 2000000000L, 20000000000L };
+    static String originalExpected[] = { "90693936", "25091201", "99943326", "93441116", "38618901", "47863826" };
+    // Seed for HMAC-SHA512 - 64 bytes
+    static String seed64 = "3132333435363738393031323334353637383930" + "3132333435363738393031323334353637383930"
+            + "3132333435363738393031323334353637383930" + "31323334";
+
+    // Test that the original values are correct
+    public static void TestOriginals() {
+        int success = 0;
+        int fail = 0;
+        for (int i = 0; i < originalTestTime.length; i++) {
+            String code = Create(originalKey, originalTestTime[i], 8);
+            boolean same = originalExpected[i].equals(code);
+            if (!same) {
+                System.out.println(code + " needs to be : " + originalExpected[i]);
+                fail++;
+            } else {
+                success++;
+            }
+        }
+        System.out.println("Total Pass : " + success + "  Total Failed: " + fail);
+
+    }
+
+    // Test if the original key is the same as in the example
+    private static void TestOriginalKey64() {
+        String originalInHex = StringToHex(originalKey);
+        System.out.println("Original Key : " + originalInHex);
+        String finalPart = originalInHex.substring(0, 8);
+        String finalKey = originalInHex + originalInHex + originalInHex + finalPart;
+
+        boolean same = finalKey.equals(seed64);
+        System.out.println("Same Key = " + same);
+        if (!same) {
+            System.out.println(finalKey);
+            System.out.println(seed64);
+        }
+    }
+    // #endregion
+
+    // #region text to Hex and Hex to text
+    // Char -> Decimal -> Hex
+    public static String StringToHex(String str) {
+        StringBuffer hex = new StringBuffer();
+        // loop chars one by one
+        for (char temp : str.toCharArray()) {
+            // convert char to int, for char `a` decimal 97
+            int decimal = (int) temp;
+            // convert int to hex, for decimal 97 hex 61
+            hex.append(Integer.toHexString(decimal));
+        }
+        return hex.toString();
+    }
+
+    // Hex -> Decimal -> Char
+    public static String HexToString(String hex) {
+        StringBuilder result = new StringBuilder();
+        // split into two chars per loop, hex, 0A, 0B, 0C...
+        for (int i = 0; i < hex.length() - 1; i += 2) {
+            String tempInHex = hex.substring(i, (i + 2));
+            // convert hex to decimal
+            int decimal = Integer.parseInt(tempInHex, 16);
+            // convert the decimal to char
+            result.append((char) decimal);
+        }
+        return result.toString();
+    }
+    // #endregion
+
+    // Create a TOTP Code with the length of the digits using the given text ,time
+    // in seconds
+    public static String Create(String keyText, long timeInSeconds, int digits) {
+        String finalKey = TextTo64BytesKey(keyText);
+        String steps = "0";
+        long T = (timeInSeconds - T0) / X;
+        steps = Long.toHexString(T).toUpperCase();
+        while (steps.length() < 16) {
+            steps = "0" + steps;
+        }
+        PrintHeader();
+        PrintData(timeInSeconds, steps);
+
+        String totp = generateTOTP(finalKey, steps, digits, "HmacSHA512");
+
+        System.out.println(totp + "| SHA512 |");
+        return totp;
+    }
+
+    // Turn the given key to a 64 format
+    public static String TextTo64BytesKey(String text) {
+        String currentKeyInHex = StringToHex(text);
+        String fist8HexPart = currentKeyInHex.substring(0, 8);
+        return currentKeyInHex + currentKeyInHex + currentKeyInHex + fist8HexPart;
+    }
+
+    // #region Log to console
+    // Print the date of the given time in seconds steps is the value of T(Hex)
+    public static void PrintData(long timeInSeconds, String steps) {
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        df.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String fmtTime = String.format("%1$-11s", timeInSeconds);
+        String utcTime = df.format(new Date(timeInSeconds * 1000));
+        System.out.print("|  " + fmtTime + "  |  " + utcTime + "  | " + steps + " |");
+    }
+
+    // Prints the header
+    public static void PrintHeader() {
+        System.out.println("+---------------+-----------------------+" + "------------------+--------+--------+");
+        System.out.println("|  Time(sec)    |   Time (UTC format)   " + "| Value of T(Hex)  |  TOTP  | Mode   |");
+        System.out.println("+---------------+-----------------------+" + "------------------+--------+--------+");
+    }
+
+    // #endregion
+
+    // #region Original Algorithm
+
     /**
      * This method uses the JCE to provide the crypto algorithm. HMAC computes a
      * Hashed Message Authentication Code with the crypto hash algorithm as a
      * parameter.
      *
-     * @param crypto   crypto: the crypto algorithm (HmacSHA1, HmacSHA256,
-     *                 HmacSHA512)
-     * @param keyBytes keyBytes: the bytes to use for the HMAC key
-     * @param text     text: the message or text to be authenticated. authenticated
+     * @param crypto:   the crypto algorithm (HmacSHA1, HmacSHA256, HmacSHA512)
+     * @param keyBytes: the bytes to use for the HMAC key
+     * @param text:     the message or text to be authenticated
      */
-
     private static byte[] hmac_sha(String crypto, byte[] keyBytes, byte[] text) {
         try {
             Mac hmac;
@@ -48,14 +190,14 @@ public class TOTP {
     /**
      * This method converts a HEX string to Byte[]
      *
-     * @param hex hex: the HEX string
+     * @param hex: the HEX string
      *
-     * @return A @return: a byte array
+     * @return: a byte array
      */
 
     private static byte[] hexStr2Bytes(String hex) {
         // Adding one byte to get the right conversion
-        // values Values starting with "0" can be converted
+        // Values starting with "0" can be converted
         byte[] bArray = new BigInteger("10" + hex, 16).toByteArray();
 
         // Copy all the REAL bytes, not the "first"
@@ -65,75 +207,24 @@ public class TOTP {
         return ret;
     }
 
-    private static final long[] DIGITS_POWER
-    // 0 1 2 3 4 5 6 7 8
-            = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000L };
-
     /**
-     * This method generates an a TOTP value for the given set of parameters.
+     * This method generates a TOTP value for the given set of parameters.
      *
-     * @param key          key: the shared secret, HEX encoded
-     * @param time         time: a value that reflects a time
-     * @param returnDigits returnDigits: number of digits to return
+     * @param key:          the shared secret, HEX encoded
+     * @param time:         a value that reflects a time
+     * @param returnDigits: number of digits to return
+     * @param crypto:       the crypto function to use
      *
-     * @return A @return: a numeric String in base 10 that includes
-     *         {@link truncationDigits} digits
+     * @return: a numeric String in base 10 that includes {@link truncationDigits}
+     *          digits
      */
 
-    public static String generateTOTP(String key, String time, String returnDigits) {
-        return generateTOTP(key, time, returnDigits, "HmacSHA1");
-    }
-
-    /**
-     * This method generates an a TOTP value for the given set of parameters.
-     *
-     * @param key          key: the shared secret, HEX encoded
-     * @param time         time: a value that reflects a time
-     * @param returnDigits returnDigits: number of digits to return
-     *
-     * @return A @return: a numeric String in base 10 that includes
-     *         {@link truncationDigits} digits
-     */
-
-    public static String generateTOTP256(String key, String time, String returnDigits) {
-        return generateTOTP(key, time, returnDigits, "HmacSHA256");
-    }
-
-    /**
-     * This method generates an a TOTP value for the given set of parameters.
-     *
-     * @param key          key: the shared secret, HEX encoded
-     * @param time         time: a value that reflects a time
-     * @param returnDigits returnDigits: number of digits to return
-     *
-     * @return A @return: a numeric String in base 10 that includes
-     *         {@link truncationDigits} digits
-     */
-
-    public static String generateTOTP512(String key, String time, String returnDigits) {
-        return generateTOTP(key, time, returnDigits, "HmacSHA512");
-    }
-
-    /**
-     * This method generates an a TOTP value for the given set of parameters.
-     *
-     * @param key          key: the shared secret, HEX encoded
-     * @param time         time: a value that reflects a time
-     * @param returnDigits returnDigits: number of digits to return
-     * @param crypto       crypto: the crypto function to use
-     *
-     * @return A @return: a numeric String in base 10 that includes
-     *         {@link truncationDigits} digits
-     */
-
-    public static String generateTOTP(String key, String time, String returnDigits, String crypto) {
-        int codeDigits = Integer.decode(returnDigits).intValue();
+    public static String generateTOTP(String key, String time, int returnDigits, String crypto) {
+        int codeDigits = returnDigits;
         String result = null;
-
         // Using the counter
         // First 8 bytes are for the movingFactor
-        // Complaint Compliant with base RFC 4226 (HOTP)
-
+        // Compliant with base RFC 4226 (HOTP)
         while (time.length() < 16)
             time = "0" + time;
 
@@ -145,144 +236,22 @@ public class TOTP {
         // put selected bytes into result int
         int offset = hash[hash.length - 1] & 0xf;
 
-        long binary = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16)
+        int binary = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16)
                 | ((hash[offset + 2] & 0xff) << 8) | (hash[offset + 3] & 0xff);
 
-        long todal = (DIGITS_POWER[codeDigits]);
-
-        long lotp = binary % todal;
-        result = Long.toString(lotp);
-        // int otp = binary % todal;
+        // Original
+        // int otp = binary % DIGITS_POWER[codeDigits];
         // result = Integer.toString(otp);
+
+        // New
+        long otp = binary % DIGITS_POWER[codeDigits];
+        result = Long.toString(otp);
 
         while (result.length() < codeDigits) {
             result = "0" + result;
         }
         return result;
     }
-
-    public static void old() {
-        // Seed for HMAC-SHA512 - 64 bytes
-        String seed64 = "6162726168616d5f67746f40686f746d61696c2e636f6d48454e4e47454348414c4c454e4745303033"
-                + "6162726168616d5f67746f40686f746d61696c2e636f6d48454e4e47454348414c4c454e4745303033";
-        long T0 = 0;
-        long X = 30;
-        long today = Math.round(new Date().getTime() / 1000);
-        long testTime[] = { today };
-
-        String steps = "0";
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        df.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-        try {
-            System.out.println("+---------------+-----------------------+" + "------------------+--------+--------+");
-            System.out.println("|  Time(sec)    |   Time (UTC format)   " + "| Value of T(Hex)  |  TOTP  | Mode   |");
-            System.out.println("+---------------+-----------------------+" + "------------------+--------+--------+");
-            for (int i = 0; i < testTime.length; i++) {
-                long T = (testTime[i] - T0) / X;
-                steps = Long.toHexString(T).toUpperCase();
-
-                while (steps.length() < 16)
-                    steps = "0" + steps;
-                String fmtTime = String.format("%1$-11s", testTime[i]);
-                String utcTime = df.format(new Date(testTime[i] * 1000));
-
-                System.out.print("|  " + fmtTime + "  |  " + utcTime + "  | " + steps + " |");
-                System.out.println(generateTOTP(seed64, steps, "10", "HmacSHA512") + "| SHA512 |");
-
-                System.out
-                        .println("+---------------+-----------------------+" + "------------------+--------+--------+");
-            }
-        } catch (final Exception e) {
-            System.out.println("Error : " + e);
-        }
-    }
-
-    // Char -> Decimal -> Hex
-    public static String convertStringToHex(String str) {
-
-        StringBuffer hex = new StringBuffer();
-
-        // loop chars one by one
-        for (char temp : str.toCharArray()) {
-
-            // convert char to int, for char `a` decimal 97
-            int decimal = (int) temp;
-
-            // convert int to hex, for decimal 97 hex 61
-            hex.append(Integer.toHexString(decimal));
-        }
-
-        return hex.toString();
-
-    }
-
-    // Hex -> Decimal -> Char
-    public static String convertHexToString(String hex) {
-
-        StringBuilder result = new StringBuilder();
-
-        // split into two chars per loop, hex, 0A, 0B, 0C...
-        for (int i = 0; i < hex.length() - 1; i += 2) {
-
-            String tempInHex = hex.substring(i, (i + 2));
-
-            // convert hex to decimal
-            int decimal = Integer.parseInt(tempInHex, 16);
-
-            // convert the decimal to char
-            result.append((char) decimal);
-
-        }
-
-        return result.toString();
-
-    }
-
-    public static void main(String[] args) {
-        old();
-        System.out.println("Start Testing");
-        Date date = new Date();
-        System.out.println("Date : " + date);
-        System.out.println("Date Time : " + date.getTime());
-        String email = "abraham_gto@hotmail.com:";
-        String key = "abraham_gto@hotmail.comHENNGECHALLENGE003";
-        System.out.println(convertStringToHex(key));
-        key = convertStringToHex(key);
-        String part = key.substring(0, 8);
-        key = key + key + key + part;
-
-        System.out.println(convertHexToString(key));
-        // key = key + key + key + key;
-        // key = key.substring(0, 64);
-
-        String curKeyFirst = key.substring(0, 8);
-        String seed64 = key + key + key + curKeyFirst;
-        // key = seed64;
-        // date = new Date(2005, 03, 18, 01, 58, 29);
-        // date.setTime(10);
-        long T0 = 0;
-        long X = 30;
-        long C = Math.round((date.getTime() / 1000));
-        System.out.println("Time In Secons is: ");
-        System.out.println(C);
-        long T = (C - T0) / X;
-        // System.out.println("Now T is ");
-        // System.out.println(T);
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        df.setTimeZone(TimeZone.getTimeZone("UTC"));
-        String utcTime = df.format(new Date(C * 1000));
-        System.out.println(utcTime);
-
-        String steps = Long.toHexString(T).toUpperCase();
-        String code = generateTOTP512(seed64, steps, "10");
-        System.out.println("code Is");
-        System.out.println(code);
-
-        String encoded = Base64.getEncoder().encodeToString((email + code).getBytes());
-        System.out.println(encoded);
-
-        // String url = "https://api.challenge.hennge.com/challenges/003";
-        // URL obj = new URL(url);
-    }
+    // #endregion
+    // #endregion
 }
