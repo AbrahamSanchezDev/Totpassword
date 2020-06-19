@@ -2,11 +2,18 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.security.GeneralSecurityException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.TimeZone;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
 /**
  * This is an example implementation of the OATH TOTP algorithm. Visit
@@ -31,12 +38,47 @@ public class TOTP {
     // 0 1 2 3 4 5 6 7 8 9 10
             = { 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000L };
 
+    // Debugs
+    static boolean printResults = true;
+
+    // static String data = {
+    // github_url: "https://github.com/holykiller/HenngeChallenge",
+    // contact_email: "abraham_gto@hotmail.com",
+    // };
+    static JSONObject data;
+
+    // Json
     // #endregion
     public static void main(String[] args) {
-        GetKey(key, 10);
+        // EncodeText(email + ":" + GetKey(key, 10));
 
         // TestOriginals();
     }
+
+    // Fill the json with data
+    public static String FillJson() {
+        HashMap<String, String> additionalDetails = new HashMap<String, String>();
+        additionalDetails.put("github_url:", "https://github.com/holykiller/HenngeChallenge");
+        additionalDetails.put("contact_email:", "abraham_gto@hotmail.com");
+        data = new JSONObject(additionalDetails);
+        return data.toJSONString();
+    }
+    // #region Send Post
+    // #endregion
+
+    // #region Encoding
+    // Returns the given text encoded
+    public static String EncodeText(String textToEncode) {
+        byte[] textBytes = textToEncode.getBytes(StandardCharsets.UTF_8);
+        String encoded = Base64.getEncoder().encodeToString(textBytes);
+        if (printResults) {
+            System.out.println("Original   : " + textToEncode);
+            System.out.println("Encoded to : " + encoded);
+        }
+        return encoded;
+    }
+
+    // #endregion
 
     // #region TOTP
     // Returns a key with the given keytext with the length of digits

@@ -13,5 +13,9 @@
 "cSpell.words": [
   "HOTP",
   "totp"
+],
+"java.project.referencedLibraries": [
+  "lib/**/*.jar",
+  "e:\\Java\\Externals\\json-simple-1.1.1.jar"
 ]
 }
