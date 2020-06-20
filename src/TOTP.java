@@ -52,8 +52,8 @@ public class TOTP {
     // #endregion
     public static void main(String[] args) {
         Post();
-        // TestOriginals();
-        // TestOriginalKey64();
+        TestOriginals();
+        TestOriginalKey64();
 
         // long time = 1592599437;
         // String code = Create(email + key, time, 10);
@@ -213,7 +213,10 @@ public class TOTP {
     public static String TextTo64BytesKey(String text) {
         String currentKeyInHex = StringToHex(text);
         String fist8HexPart = currentKeyInHex.substring(0, 8);
-        return currentKeyInHex + currentKeyInHex + currentKeyInHex + fist8HexPart;
+        // This is how it was in the book and it worked for the given results....so the
+        // results them self were wrong
+        // return currentKeyInHex + currentKeyInHex + currentKeyInHex + fist8HexPart;
+        return currentKeyInHex;
     }
 
     // #region Log to console
