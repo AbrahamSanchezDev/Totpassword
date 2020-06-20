@@ -9,10 +9,14 @@ import java.util.HashMap;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpRequest.BodyPublishers;
 import java.nio.charset.StandardCharsets;
 import java.util.TimeZone;
 
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 /**
@@ -30,8 +34,8 @@ public class TOTP {
     }
 
     // #region Variables
-    static String email = "abraham_gto@hotmail.com:";
-    static String key = "abraham_gto@hotmail.comHENNGECHALLENGE003";
+    static String email = "abraham_gto@hotmail.com";
+    static String key = "HENNGECHALLENGE003";
     static long T0 = 0;
     static long X = 30;
     private static final long[] DIGITS_POWER
@@ -41,26 +45,48 @@ public class TOTP {
     // Debugs
     static boolean printResults = true;
 
-    // static String data = {
-    // github_url: "https://github.com/holykiller/HenngeChallenge",
-    // contact_email: "abraham_gto@hotmail.com",
-    // };
     static JSONObject data;
+    static String url = "https://api.challenge.hennge.com/challenges/003";
 
     // Json
     // #endregion
     public static void main(String[] args) {
-        // EncodeText(email + ":" + GetKey(key, 10));
-
+        Post();
         // TestOriginals();
+        // TestOriginalKey64();
+
+        // long time = 1592599437;
+        // String code = Create(email + key, time, 10);
+        // String codeResult = "0971306865";
+
+        // System.out.println("Result : " + code);
+        // System.out.println("Want it to be " + codeResult);
+        // System.out.println("Are equal : " + codeResult.equals(code));
+
+    }
+
+    public static void Post() {
+        String encodedKey = EncodeText(email + ":" + GetKey(email + key, 10));
+
+        FillJson();
+        // TestOriginals();
+        HttpClient http = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
+                .headers("Authorization", "Basic " + encodedKey, "Content-Type", "application/json")
+                .POST(BodyPublishers.ofString(FillJson())).build();
+        System.out.println(request.headers());
+
+        http.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(HttpResponse::body)
+                .thenAccept(System.out::println).join();
     }
 
     // Fill the json with data
     public static String FillJson() {
         HashMap<String, String> additionalDetails = new HashMap<String, String>();
-        additionalDetails.put("github_url:", "https://github.com/holykiller/HenngeChallenge");
-        additionalDetails.put("contact_email:", "abraham_gto@hotmail.com");
+        additionalDetails.put("github_url", "https://github.com/holykiller/HenngeChallenge");
+        additionalDetails.put("contact_email", "abraham_gto@hotmail.com");
         data = new JSONObject(additionalDetails);
+
         return data.toJSONString();
     }
     // #region Send Post
@@ -85,6 +111,9 @@ public class TOTP {
     public static String GetKey(String keyText, int digits) {
         Date now = new Date();
         long nowInSeconds = now.getTime() / 1000;
+        System.out.println(now.toString());
+        System.out.println("Now in seconds " + nowInSeconds);
+
         String code = Create(keyText, nowInSeconds, digits);
         System.out.println("Code : " + code);
         return code;
@@ -119,7 +148,7 @@ public class TOTP {
     // Test if the original key is the same as in the example
     private static void TestOriginalKey64() {
         String originalInHex = StringToHex(originalKey);
-        System.out.println("Original Key : " + originalInHex);
+        System.out.println("Original Key is now : " + originalInHex);
         String finalPart = originalInHex.substring(0, 8);
         String finalKey = originalInHex + originalInHex + originalInHex + finalPart;
 
@@ -165,7 +194,7 @@ public class TOTP {
     // in seconds
     public static String Create(String keyText, long timeInSeconds, int digits) {
         String finalKey = TextTo64BytesKey(keyText);
-        String steps = "0";
+        String steps = "30";
         long T = (timeInSeconds - T0) / X;
         steps = Long.toHexString(T).toUpperCase();
         while (steps.length() < 16) {
@@ -278,7 +307,7 @@ public class TOTP {
         // put selected bytes into result int
         int offset = hash[hash.length - 1] & 0xf;
 
-        int binary = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16)
+        long binary = ((hash[offset] & 0x7f) << 24) | ((hash[offset + 1] & 0xff) << 16)
                 | ((hash[offset + 2] & 0xff) << 8) | (hash[offset + 3] & 0xff);
 
         // Original
