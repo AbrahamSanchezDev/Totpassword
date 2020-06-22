@@ -55,21 +55,11 @@ public class TOTP {
         TestOriginals();
         TestOriginalKey64();
 
-        // long time = 1592599437;
-        // String code = Create(email + key, time, 10);
-        // String codeResult = "0971306865";
-
-        // System.out.println("Result : " + code);
-        // System.out.println("Want it to be " + codeResult);
-        // System.out.println("Are equal : " + codeResult.equals(code));
-
     }
 
     public static void Post() {
         String encodedKey = EncodeText(email + ":" + GetKey(email + key, 10));
-
         FillJson();
-        // TestOriginals();
         HttpClient http = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url))
                 .headers("Authorization", "Basic " + encodedKey, "Content-Type", "application/json")
@@ -316,7 +306,6 @@ public class TOTP {
         // Original
         // int otp = binary % DIGITS_POWER[codeDigits];
         // result = Integer.toString(otp);
-
         // New
         long otp = binary % DIGITS_POWER[codeDigits];
         result = Long.toString(otp);
@@ -327,5 +316,50 @@ public class TOTP {
         return result;
     }
     // #endregion
+
+    /**
+     * This method generates a TOTP value for the given set of parameters.
+     *
+     * @param key:          the shared secret, HEX encoded
+     * @param time:         a value that reflects a time
+     * @param returnDigits: number of digits to return
+     *
+     * @return: a numeric String in base 10 that includes {@link truncationDigits}
+     *          digits
+     */
+
+    public static String generateTOTP(String key, String time, int returnDigits) {
+        return generateTOTP(key, time, returnDigits, "HmacSHA1");
+    }
+
+    /**
+     * This method generates a TOTP value for the given set of parameters.
+     *
+     * @param key:          the shared secret, HEX encoded
+     * @param time:         a value that reflects a time
+     * @param returnDigits: number of digits to return
+     *
+     * @return: a numeric String in base 10 that includes {@link truncationDigits}
+     *          digits
+     */
+
+    public static String generateTOTP256(String key, String time, int returnDigits) {
+        return generateTOTP(key, time, returnDigits, "HmacSHA256");
+    }
+
+    /**
+     * This method generates a TOTP value for the given set of parameters.
+     *
+     * @param key:          the shared secret, HEX encoded
+     * @param time:         a value that reflects a time
+     * @param returnDigits: number of digits to return
+     *
+     * @return: a numeric String in base 10 that includes {@link truncationDigits}
+     *          digits
+     */
+
+    public static String generateTOTP512(String key, String time, int returnDigits) {
+        return generateTOTP(key, time, returnDigits, "HmacSHA512");
+    }
     // #endregion
 }
