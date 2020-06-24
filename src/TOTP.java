@@ -34,8 +34,10 @@ public class TOTP {
     }
 
     // #region Variables
-    static String email = "abraham_gto@hotmail.com";
-    static String key = "HENNGECHALLENGE003";
+    static String email = "email@example.com";
+    static String key = "SHARED KEY";
+    static String gitRepo = "https://github.com/user/repo";
+    static String url = "https://PostIP";
     static long T0 = 0;
     static long X = 30;
     private static final long[] DIGITS_POWER
@@ -46,7 +48,6 @@ public class TOTP {
     static boolean printResults = true;
 
     static JSONObject data;
-    static String url = "https://api.challenge.hennge.com/challenges/003";
 
     // Json
     // #endregion
@@ -73,8 +74,8 @@ public class TOTP {
     // Fill the json with data
     public static String FillJson() {
         HashMap<String, String> additionalDetails = new HashMap<String, String>();
-        additionalDetails.put("github_url", "https://github.com/holykiller/HenngeChallenge");
-        additionalDetails.put("contact_email", "abraham_gto@hotmail.com");
+        additionalDetails.put("github_url", gitRepo);
+        additionalDetails.put("contact_email", email);
         data = new JSONObject(additionalDetails);
 
         return data.toJSONString();
