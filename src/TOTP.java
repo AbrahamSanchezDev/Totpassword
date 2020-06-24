@@ -53,9 +53,8 @@ public class TOTP {
     // #endregion
     public static void main(String[] args) {
         Post();
-        TestOriginals();
-        TestOriginalKey64();
-
+        // TestOriginals();
+        // TestOriginalKey64();
     }
 
     public static void Post() {
